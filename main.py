@@ -41,19 +41,34 @@ async def chat(data: Chat, request: Request):
     if not check_rate(ip):
         return {"error": "Too many requests. Please wait a bit."}
 
+    # Safety
     if "suicide" in data.prompt.lower() or "self harm" in data.prompt.lower():
         return {
             "response": "Hey, I’m not a doctor. If you’re in danger, please call 112 right now or talk to someone nearby."
         }
 
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+
+    # System prompt for emotional support
+    system_prompt = (
+        "You are a friendly, emotional, supportive AI. "
+        "Talk like a caring friend. "
+        "Make long, comforting responses. "
+        "Ask follow-up questions gently. "
+        "Avoid giving medical advice. "
+        "If user is in danger, tell them to seek help immediately."
+    )
+
     response = requests.post(
         "https://router.huggingface.co/api/v1/runs",
         headers=headers,
         json={
             "model": MODEL,
-            "inputs": data.prompt,
-            "parameters": {"max_new_tokens": 120}
+            "inputs": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": data.prompt}
+            ],
+            "parameters": {"max_new_tokens": 250}
         }
     )
 
@@ -62,5 +77,5 @@ async def chat(data: Chat, request: Request):
     if "error" in output:
         return {"response": "Model error. Try again later."}
 
-    # Router output structure
     return {"response": output["generated_text"]}
+
