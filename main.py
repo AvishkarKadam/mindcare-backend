@@ -41,7 +41,6 @@ async def chat(data: Chat, request: Request):
     if not check_rate(ip):
         return {"error": "Too many requests. Please wait a bit."}
 
-    # Safety
     if "suicide" in data.prompt.lower() or "self harm" in data.prompt.lower():
         return {
             "response": "Hey, I’m not a doctor. If you’re in danger, please call 112 right now or talk to someone nearby."
@@ -49,14 +48,13 @@ async def chat(data: Chat, request: Request):
 
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
 
-    # System prompt for emotional support
-    system_prompt = (
-        "You are a friendly, emotional, supportive AI. "
-        "Talk like a caring friend. "
-        "Make long, comforting responses. "
-        "Ask follow-up questions gently. "
-        "Avoid giving medical advice. "
-        "If user is in danger, tell them to seek help immediately."
+    # Make the model respond emotionally
+    prompt_text = (
+        "You are a caring friend. "
+        "Respond emotionally and gently. "
+        "Make the reply long and supportive.\n\n"
+        "User: " + data.prompt + "\n\n"
+        "AI:"
     )
 
     response = requests.post(
@@ -64,18 +62,17 @@ async def chat(data: Chat, request: Request):
         headers=headers,
         json={
             "model": MODEL,
-            "inputs": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": data.prompt}
-            ],
-            "parameters": {"max_new_tokens": 250}
+            "inputs": prompt_text,
+            "parameters": {"max_new_tokens": 200}
         }
     )
 
     output = response.json()
 
-    if "error" in output:
+    # If error
+    if isinstance(output, dict) and "error" in output:
         return {"response": "Model error. Try again later."}
 
-    return {"response": output["generated_text"]}
-
+    # Correct output format
+    generated_text = output["outputs"][0]["generated_text"]
+    return {"response": generated_text}
