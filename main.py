@@ -1,17 +1,26 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
 import time
+import os
 
 app = FastAPI()
 
-HF_API_KEY = "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"
+# CORS setup (allows your frontend to call backend)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+HF_API_KEY = os.getenv("HF_API_KEY")
 MODEL = "mistralai/mistral-7b-instruct"
 
-# Basic rate limit per IP (5 messages per 5 minutes)
 RATE_LIMIT = 5
-RATE_TIME = 300  # seconds
-
+RATE_TIME = 300
 ip_logs = {}
 
 class Chat(BaseModel):
@@ -33,7 +42,6 @@ async def chat(data: Chat, request: Request):
     if not check_rate(ip):
         return {"error": "Too many requests. Please wait a bit."}
 
-    # Safety reminder
     if "suicide" in data.prompt.lower() or "self harm" in data.prompt.lower():
         return {
             "response": "Hey, I’m not a doctor. If you’re in danger, please call 112 right now or talk to someone nearby."
@@ -52,3 +60,4 @@ async def chat(data: Chat, request: Request):
         return {"response": "Model error. Try again later."}
 
     return {"response": output[0]["generated_text"]}
+
