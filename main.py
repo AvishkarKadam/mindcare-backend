@@ -7,7 +7,6 @@ import os
 
 app = FastAPI()
 
-# CORS setup (allows your frontend to call backend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,7 +16,7 @@ app.add_middleware(
 )
 
 HF_API_KEY = os.getenv("HF_API_KEY")
-MODEL = "mistralai/mistral-7b-instruct"
+MODEL = "google/flan-t5-small"
 
 RATE_LIMIT = 5
 RATE_TIME = 300
@@ -48,16 +47,20 @@ async def chat(data: Chat, request: Request):
         }
 
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    payload = {"inputs": data.prompt}
     response = requests.post(
-        f"https://api-inference.huggingface.co/models/{MODEL}",
+        "https://router.huggingface.co/api/v1/runs",
         headers=headers,
-        json=payload
+        json={
+            "model": MODEL,
+            "inputs": data.prompt,
+            "parameters": {"max_new_tokens": 120}
+        }
     )
+
     output = response.json()
 
-    if isinstance(output, dict) and "error" in output:
+    if "error" in output:
         return {"response": "Model error. Try again later."}
 
-    return {"response": output[0]["generated_text"]}
-
+    # Router output structure
+    return {"response": output["generated_text"]}
